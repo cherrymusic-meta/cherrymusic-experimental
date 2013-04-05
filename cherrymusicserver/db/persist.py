@@ -32,24 +32,6 @@ import cherrymusicserver.db as db
 _persist_info = {}
 
 
-def special_fetch(dbname, cls, where=(), groups='', limit=None, offset=None):
-    connector = db.connect.BoundConnector(dbname)
-    stmt = _persist_info[cls]['select']
-    values = ()
-    if where:
-        stmt += ' WHERE ' + where[0]
-        values += where[1]
-    if groups:
-        # stmt += ' ' + 'GROUP BY {0}'.format(', '.join(groups))
-        stmt += ' ' + 'GROUP BY {0}'.format(groups)
-    if limit is not None:
-        stmt += ' LIMIT {0}'.format(limit)
-    if offset is not None:
-        stmt += ' OFFSET {0}'.format(offset)
-    cursor = connector.execute(stmt, values)
-    return (cls(*r) for r in cursor.fetchall())
-
-
 def fetch(dbname, cls, paramdict=None, groups='', limit=None, offset=None):
     connector = db.connect.BoundConnector(dbname)
     stmt = _persist_info[cls]['select']
