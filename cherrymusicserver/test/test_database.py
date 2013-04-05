@@ -140,7 +140,7 @@ def runscript(dbdef, vnum, scriptname, conn):
     '''
     script = dbdef[str(vnum)][scriptname]
     lno = 1
-    for stmt in script.split(';'):
+    for stmt in split_sqlscript(script):
         linecount = stmt.count('\n')   # yeah, linux linesep.
         try:
             cursor = conn.cursor()
@@ -159,6 +159,21 @@ def runscript(dbdef, vnum, scriptname, conn):
             lno += linecount
         finally:
             cursor.close()
+
+
+def split_sqlscript(script):
+    import re
+    stmts = [x + ';' for x in script.split(';')]
+    i = 0
+    while i < len(stmts):
+        if re.search(r'\bBEGIN\b', stmts[i], re.I):
+            while (i + 1) < len(stmts) and not re.search(r'\bEND\b', stmts[i], re.I):
+                stmts[i] += stmts[i + 1]
+                del stmts[i + 1]
+                if re.search(r'\bEND\b', stmts[i], re.I):
+                    break
+        i += 1
+    return stmts
 
 
 def script_lines(script, start=1, length=0):
