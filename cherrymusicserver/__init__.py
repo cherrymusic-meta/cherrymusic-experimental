@@ -35,7 +35,21 @@ import cherrypy
 import logging
 import os
 
+config = {
+    'server.port': 8080,
+    'media.basedir': '/home/til/Music',
+    'server.localhost_only': True,
+    'runtime.path.data': 'data',
+    'runtime.path.res': 'res',
+    'runtime.path.plugins': 'plugins',
+}
+
+from cherrymusicserver import db
+from cherrymusicserver import http
 from cherrymusicserver import patch
+from cherrymusicserver import resources
+from cherrymusicserver import service
+from cherrymusicserver import session
 
 VERSION = "0.24.1"
 DESCRIPTION = "an mp3 server for your browser"
@@ -46,22 +60,20 @@ LONG_DESCRIPTION = """CherryMusic is a music streaming
     it happends in your browser and uses HTML5 for audio playback.
     """
 
-config = {
-    'server.port': 8080,
-    'media.basedir': '/home/til/Music',
-    'server.localhost_only': True,
-}
 
 
 class CherryMusic:
 
     def __init__(self):
+        # service.provide(db.sql.TmpConnector)
+        service.provide(db.sql.SQLiteConnector, kwargs={'datadir': config['runtime.path.data']})
+        db.ensure_requirements()
         self.start()
 
     def start(self):
         socket_host = "127.0.0.1" if config['server.localhost_only'] else "0.0.0.0"
 
-        resourcedir = os.path.abspath('res')
+        resourcedir = os.path.abspath(config['runtime.path.res'])
 
         cherrypy.config.update({
             'server.socket_port': config['server.port'],
@@ -99,7 +111,8 @@ class CherryMusic:
                 '/favicon.ico': {
                     'tools.staticfile.on': True,
                     'tools.staticfile.filename': resourcedir+'/favicon.ico',
-                }})
+                },
+            })
         logging.info('Starting server on port %s ...' % config['server.port'])
 
         cherrypy.lib.caching.expires(0)  # disable expiry caching
@@ -115,24 +128,17 @@ class CherryMusic:
         self.start()
 
 
-class Resource(object):
+class _Root(http.Resource):
 
-    exposed = True
-
-    def GET(self):
-        raise cherrypy.HTTPError(405, 'Method Not Allowed')
-
-    def PUT(self):
-        raise cherrypy.HTTPError(405, 'Method Not Allowed')
-
-    def POST(self):
-        raise cherrypy.HTTPError(405, 'Method Not Allowed')
-
-    def DELETE(self):
-        raise cherrypy.HTTPError(405, 'Method Not Allowed')
-
-
-class _Root(Resource):
+    def __getattr__(self, name):
+        if name.startswith('_'):
+            raise AttributeError(name)
+        try:
+            print('looking up', name)
+            return resources.get(name)
+        except LookupError:
+            print('not found')
+            raise AttributeError(name)
 
     def GET(self):
         return """

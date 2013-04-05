@@ -1,0 +1,39 @@
+<HTML>
+<HEAD>
+	<TITLE>Login: CherryMusicTest</TITLE>
+	<script type="text/javascript" src="/res/js/jquery-1.9.1.min.js"></script>
+   	<script type="text/javascript" src="/res/js/json2.js"></script>
+	<script type="text/javascript">
+	 // $(function() {
+	 //   var frm = $(document.loginform);
+	 //   var dat = JSON.stringify(frm.serializeArray());
+
+	 //   alert("I am about to POST this:\n\n" + dat);
+
+	 //   $.post(
+	 //     frm.attr("action"),
+	 //     dat,
+	 //     function(data) {
+	 //       alert("Response: " + data);
+	 //     }
+	 //   );
+	 // });
+	</script>
+</HEAD>
+<body OnLoad="document.loginform.username.focus();">
+<div id="login">
+    <div class="logo">
+        <div class="credentials">
+            <span class="cm">CherryMusic</span>
+            <form method="post" action="/login" name="loginform">
+            Username:<br><input type="text" name="username" /><br>
+            Password:<br><input type="password" name="password" /><br>
+            <br>
+            <input type="submit" name="login" value="login" />
+            </form>
+            <a class="fomori" href="http://www.fomori.org">visit fomori.org</a>
+        </div>
+    </div>
+</div>
+</body>
+</HTML>

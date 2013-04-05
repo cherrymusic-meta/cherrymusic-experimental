@@ -28,24 +28,25 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>
 #
 
-from cherrymusicserver import log
+import logging as log
 
 #check for meta info libraries
 try:
     import stagger
     has_stagger = True
+    print('stagger imported')
 except ImportError:
-    log.w('''python library "stagger" not found: There will be no ID-tag support!''')
+    log.info('''python library "stagger" not found: There will be no ID-tag support!''')
     has_stagger = False
 
 try:
     import audioread
     has_audioread = True
 except ImportError:
-    log.w('''python library "audioread" not found!
+    log.info('''python library "audioread" not found!
 -Audio file length can't be determined without it!''')
     has_audioread = False
-    
+
 class Metainfo():
     def __init__(self, artist, album, title, track, length):
         self.artist = artist
@@ -67,14 +68,14 @@ class Metainfo():
 #
 
 #stagger
-        
+
 class MockTag():
     def __init__(self):
         self.artist = '-'
         self.album = '-'
         self.title = '-'
         self.track = '-'
-       
+
 def getSongInfo(filepath):
     if has_stagger:
         try:
@@ -83,16 +84,16 @@ def getSongInfo(filepath):
             tag = MockTag()
     else:
         tag = MockTag()
-            
+
     if has_audioread:
         try:
             with audioread.audio_open(filepath) as f:
                 audiolength = f.duration
         except Exception:
-            log.e('audioread failed! (%s)', filepath)
+            log.error('audioread failed! (%s)', filepath)
             audiolength = 0
     else:
         audiolength = 0
     return Metainfo(tag.artist, tag.album, tag.title, tag.track, audiolength)
 
-    
+
