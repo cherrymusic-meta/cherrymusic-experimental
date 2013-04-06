@@ -32,7 +32,7 @@ import cherrymusicserver.db as db
 _persist_info = {}
 
 
-def fetch(dbname, cls, paramdict=None, groups='', limit=None, offset=None):
+def fetch(dbname, cls, paramdict=None, groups='', order='', limit=None, offset=None):
     connector = db.connect.BoundConnector(dbname)
     stmt = _persist_info[cls]['select']
     values = ()
@@ -42,6 +42,8 @@ def fetch(dbname, cls, paramdict=None, groups='', limit=None, offset=None):
     if groups:
         # stmt += ' ' + 'GROUP BY {0}'.format(', '.join(groups))
         stmt += ' ' + 'GROUP BY {0}'.format(groups)
+    if order:
+        stmt += ' ' + 'ORDER BY {0}'.format(groups)
     if limit is not None:
         stmt += ' LIMIT {0}'.format(limit)
     if offset is not None:
@@ -69,6 +71,14 @@ def persist(dbname, cls, obj):
     values = tuple(obj)[1:]
     cursor = _transact(dbname, stmt, values)
     return cls(cursor.lastrowid, *values)
+
+
+def persist_many(dbname, cls, objs):
+    stmt = _persist_info[cls]['insert']
+    params = tuple(o[1:] for o in objs)
+    connector = db.connect.BoundConnector(dbname)
+    with connector.transaction() as txn:
+        txn.executemany(stmt, params)
 
 
 def update(dbname, cls, obj):

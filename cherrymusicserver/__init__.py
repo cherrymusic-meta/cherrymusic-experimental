@@ -61,12 +61,15 @@ LONG_DESCRIPTION = """CherryMusic is a music streaming
     """
 
 
+def init_services():
+    # service.provide(db.sql.TmpConnector)
+    service.provide(db.sql.SQLiteConnector, kwargs={'datadir': config['runtime.path.data']})
+
 
 class CherryMusic:
 
     def __init__(self):
-        # service.provide(db.sql.TmpConnector)
-        service.provide(db.sql.SQLiteConnector, kwargs={'datadir': config['runtime.path.data']})
+        init_services()
         db.ensure_requirements()
         self.start()
 

@@ -182,7 +182,7 @@ class Updater(object):
                 self._setversion(0, txn)
 
     def _init_with_version(self, vnum):
-        log.debug('initializing database %r to version %d', self.name, vnum)
+        log.debug('initializing database %r to version %r', self.name, vnum)
         with self.db.transaction() as txn:
             txn.isolation_level = "EXCLUSIVE"
             txn.executescript(self.desc[vnum]['create.sql'])

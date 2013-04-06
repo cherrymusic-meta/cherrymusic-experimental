@@ -28,6 +28,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>
 #
 import functools
+import logging as log
 
 from collections import namedtuple
 
@@ -49,7 +50,8 @@ DBNAME = 'media'
 DBVERSION = '1'
 TYPE = Tag
 
-main.db.require(DBNAME, DBVERSION)
+log.info('preparing database %r', DBNAME)
+main.db.ensure_requirements(DBNAME)
 
 # dbdef = main.db.defs.get(DBNAME)
 # with main.db.connect.BoundConnector(DBNAME).transaction() as txn:

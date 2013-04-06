@@ -48,7 +48,7 @@ _cp_config = {
     'tools.caching.on': False,
 }
 
-File = db.persistant(namedtuple('File', 'fileid name ext isdir parent'))
+File = db.persistant(namedtuple('File', 'id name ext isdir parent'))
 
 DBNAME = 'files'
 DBVERSION = '1'
@@ -73,9 +73,9 @@ def _add_dir(basepath, name, parentid):
     fullpath = os.path.join(basepath, name)
     for childname in os.listdir(fullpath):
         if os.path.isdir(os.path.join(fullpath, childname)):
-            _add_dir(fullpath, childname, f.fileid)
+            _add_dir(fullpath, childname, f.id)
         else:
-            _add_file(fullpath, childname, f.fileid)
+            _add_file(fullpath, childname, f.id)
 
 
 def _add_file(basepath, name, parentid):
@@ -84,7 +84,7 @@ def _add_file(basepath, name, parentid):
     fullpath = os.path.join(basepath, name)
     relpath = fullpath[len(main.config['media.basedir']) + 1:]
     track = media.addTrack(relpath)
-    _add_path_tags(track.trackid, os.path.split(relpath))
+    _add_path_tags(track.trackid, relpath.split(os.path.sep))
     _add_meta_tags(track.trackid, fullpath)
 
 
