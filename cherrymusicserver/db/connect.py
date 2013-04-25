@@ -34,6 +34,7 @@ Connect to databases.
 
 # from abc import ABCMeta, abstractmethod   # don't, for py2 compatibility
 from contextlib import contextmanager
+import threading
 
 import cherrymusicserver.service as service
 
@@ -59,6 +60,26 @@ class AbstractConnector(object):
     def bound(self, dbname):
         '''Return a :class:`BoundConnector` bound to the database with ``dbname``.'''
         return BoundConnector(dbname, self)
+
+
+@service.provider('dbconnector')
+class SharedConnectionWrapper(AbstractConnector):
+
+    def __init__(self, connector):
+        self.lock = threading.Lock()
+        self.connector = connector
+        self.connections = {}
+
+    def connection(self, dbname):
+        try:
+            return self.connections[dbname]
+        except KeyError:
+            with self.lock:
+                cnx = self.connector.connection(dbname)
+                return self.connections.setdefault(dbname, cnx)
+
+    def dblocation(self, basename):
+        return self.connector.dblocation(basename)
 
 
 @service.user(baseconnector='dbconnector')

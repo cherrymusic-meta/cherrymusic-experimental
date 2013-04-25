@@ -29,6 +29,7 @@
 #
 import os
 import sys
+import time
 
 import logging as log
 log.basicConfig(level=log.INFO, format='%(levelname)-8s | %(message)s')
@@ -47,36 +48,77 @@ from cherrymusicserver import media
 
 from cherrymusicserver.resources import files
 
+DBNAME = media.DBNAME
+QUEUESIZE = 5000
+
 
 def convert(olddbpath):
     db.resetdb(media.DBNAME)
     db.ensure_requirements(media.DBNAME)
+    _add_tagtypes()
+    _add_tracks(olddbpath)
+    _add_tags()
+
+
+def _add_tagtypes():
+    types = (
+        ('filesystem', 'Files'),
+        ('artist', 'Artists'),
+        ('album', 'Albums'),
+        ('title', 'Titles'),
+    )
+    for t in types:
+        db.persist.persist(DBNAME, media._TagType, media._TagType(None, *t))
+
+
+def _add_tracks(olddbpath):
+    log.info('adding tracks...')
     connector = db.sql.SQLiteConnector().bound(olddbpath)
+    count = 0
+    starttime = last = now = time.time()
     for dirname, subdirs, subfiles in walk_old_db(connector):
-        if 0 == dirname.count(os.path.sep):
-            log.info('%r (%d)', dirname, len(subfiles))
+        now = time.time()
+        if now - last > 1:
+            last = now
+            rate = count / (now - starttime)
+            log.info('%r (%d, %d/s)', dirname[:60], count, rate)
         for filename in subfiles:
-            _add_file(dirname, filename)
-    # with _addqueue.mutex:
-    if not _addqueue.empty():
-        db.persist.persist_many(media.DBNAME, media.Tag, _addqueue.queue)
-        _addqueue.queue.clear()
+            _add_file_as_track(dirname, filename)
+        count += len(subfiles)
+    dbqueue.finalize()
+    log.info('done.')
 
 
-def _add_file(basepath, name):
+def _add_tags():
+    log.info('adding tags...')
+    count = 0
+    starttime = last = now = time.time()
+    tracks = db.persist.fetch(DBNAME, media.Track)
+    for track in tracks:
+        now = time.time()
+        if 1 < now - last:
+            last = now
+            rate = count / (now - starttime)
+            log.info('%r (%d, %d/s)', track.content[:60], count, rate)
+        _add_path_taggings(track.trackid, track.content)
+        _add_meta_taggings(track.trackid, track.content)
+        count += 1
+    dbqueue.finalize()
+
+
+def _add_file_as_track(basepath, name):
     relpath = os.path.join(basepath, name)
-    track = media.addTrack(relpath)
-    _add_path_tags(track.trackid, relpath)
-    _add_meta_tags(track.trackid, relpath)
+    dbqueue.persist(media.Track(None, relpath))
+    # for name in relpath.split(os.path.sep):
 
 
-def _add_path_tags(trackid, filepath):
+def _add_path_taggings(trackid, filepath):
     pathnames = os.path.splitext(filepath)[0].split(os.path.sep)
     for i in range(len(pathnames)):
         _add_tag('filesystem', 'Files', pathnames[i], trackid, i)
 
 
-def _add_meta_tags(trackid, filepath):
+def _add_meta_taggings(trackid, filepath):
     pathnames = os.path.splitext(filepath)[0].split(os.path.sep)
     if len(pathnames) > 1 and not pathnames[0].startswith('+'):
         _add_tag('artist', 'Artist', pathnames[0], trackid)
@@ -85,18 +127,12 @@ def _add_meta_tags(trackid, filepath):
     _add_tag('title', 'Titles', os.path.splitext(pathnames[-1])[0], trackid)
 
 
-_addqueue = Queue(maxsize=500)
-
-
 def _add_tag(type, grp, text, trackid, seq=None):
     userid = 0
     public = 1
     tag = media.Tag(None, None, text, type, grp, userid, public, seq, trackid)
-    _addqueue.put(tag)
-    # with _addqueue.mutex:
-    if _addqueue.full():
-        db.persist.persist_many(media.DBNAME, media.Tag, _addqueue.queue)
-        _addqueue.queue.clear()
+    dbqueue.persist(tag)
+    return tag
 
 
 def walk_old_db(connector):
@@ -127,6 +163,38 @@ def walk_old_db(connector):
             yield dirname, subdirs, subfiles
         cursor.close()
     conn.close()
+
+
+class QueuedPersist(object):
+    def __init__(self, dbname, maxsize):
+        self.dbname = dbname
+        self.maxsize = maxsize
+        self.queues = {}
+
+    def getqueue(self, cls):
+        try:
+            return self.queues[cls]
+        except KeyError:
+            return self.queues.setdefault(cls, Queue(self.maxsize))
+
+    def persist(self, obj):
+        cls = obj.__class__
+        q = self.getqueue(cls)
+        q.put(obj)
+        if q.full():
+            db.persist.persist_many(self.dbname, cls, q.queue)
+            q.queue.clear()
+
+    def finalize(self):
+        for cls in self.queues:
+            q = self.getqueue(cls)
+            if not q.empty():
+                db.persist.persist_many(self.dbname, cls, q.queue)
+                q.queue.clear()
+        self.queues.clear()
+
+dbqueue = QueuedPersist(DBNAME, QUEUESIZE)
+
 
 if __name__ == '__main__':
     convert(sys.argv[1])

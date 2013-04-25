@@ -27,7 +27,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>
 #
-import cherrymusicserver.db as db
+from cherrymusicserver import db
 
 _persist_info = {}
 
@@ -99,6 +99,12 @@ def _transact(dbname, stmt, params):
     connector = db.connect.BoundConnector(dbname)
     with connector.transaction() as txn:
         cursor = txn.execute(stmt, params)
+    return cursor
+
+
+def _execute(dbname, stmt, params):
+    cnx = db.connect.BoundConnector(dbname).connection()
+    cursor = cnx.execute(stmt, params)
     return cursor
 
 

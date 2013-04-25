@@ -49,7 +49,6 @@ from cherrymusicserver import http
 from cherrymusicserver import patch
 from cherrymusicserver import resources
 from cherrymusicserver import service
-from cherrymusicserver import session
 
 VERSION = "0.24.1"
 DESCRIPTION = "an mp3 server for your browser"
@@ -57,13 +56,13 @@ LONG_DESCRIPTION = """CherryMusic is a music streaming
     server written in python. It's based on cherrypy and jPlayer.
     You can search your collection, create and share playlists with
     other users. It's able to play music on almost all devices since
-    it happends in your browser and uses HTML5 for audio playback.
+    it happens in your browser and uses HTML5 for audio playback.
     """
 
 
 def init_services():
-    # service.provide(db.sql.TmpConnector)
-    service.provide(db.sql.SQLiteConnector, kwargs={'datadir': config['runtime.path.data']})
+    realconnector = db.sql.SQLiteConnector(datadir=config['runtime.path.data'])
+    service.provide(db.connect.SharedConnectionWrapper, args=(realconnector,))
 
 
 class CherryMusic:
